@@ -16,3 +16,6 @@ class TestHtmlNode(unittest.TestCase):
             HtmlNode("p", "This is a test")
         ], {"class": "container"})
         self.assertIsInstance(node.children[0], HtmlNode)
+
+if __name__ == "__main__":
+    unittest.main()

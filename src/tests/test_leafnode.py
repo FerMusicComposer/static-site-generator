@@ -1,6 +1,5 @@
 import unittest
 from leafnode import LeafNode
-from htmlnode import HtmlNode
 
 class TestLeafNode(unittest.TestCase):
     def test_to_html(self):
@@ -14,3 +13,6 @@ class TestLeafNode(unittest.TestCase):
     def test_no_tag_returns_raw_value(self):
         node = LeafNode(value="Hello, world")
         self.assertEqual(node.to_html(), "Hello, world")    
+
+if __name__ == "__main__":
+    unittest.main()
