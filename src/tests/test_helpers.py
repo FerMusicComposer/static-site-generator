@@ -1,6 +1,6 @@
 import unittest
 from texnode import TextNode, TextType
-from helpers import split_nodes_delimiter
+from helpers import *
 
 class TestHelpers(unittest.TestCase):
     def test_split_single_code_block(self):
@@ -120,6 +120,66 @@ class TestHelpers(unittest.TestCase):
             TextNode("goodbye", TextType.NORMAL),
         ]
         self.assertEqual(new_nodes, expected_nodes)
+
+    def test_extract_markdown_images_single(self):
+        text = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif)"
+        images = extract_markdown_images(text)
+        self.assertEqual(images, [("rick roll", "https://i.imgur.com/aKaOqIh.gif")])
+
+    def test_extract_markdown_images_multiple(self):
+        text = "This is text with ![image1](url1.jpg) and also ![image2](url2.png)"
+        images = extract_markdown_images(text)
+        self.assertEqual(images, [("image1", "url1.jpg"), ("image2", "url2.png")])
+
+    def test_extract_markdown_images_no_images(self):
+        text = "This is text with no images or links."
+        images = extract_markdown_images(text)
+        self.assertEqual(images, [])
+
+    def test_extract_markdown_images_mixed_content(self):
+        text = "Here's an image ![alt](img.jpeg) and a link [link](url.com)."
+        images = extract_markdown_images(text)
+        self.assertEqual(images, [("alt", "img.jpeg")])
+
+    def test_extract_markdown_images_empty_alt_text_url(self):
+        text = "Image with empty alt text: ![](/path/to/image.png) and empty URL: ![empty]()."
+        images = extract_markdown_images(text)
+        self.assertEqual(images, [("", "/path/to/image.png"), ("empty", "")])
+
+    def test_extract_markdown_images_special_chars(self):
+        text = "![Alt text with spaces and-hyphens](https://example.com/image_with_underscores.gif?param=value)"
+        images = extract_markdown_images(text)
+        self.assertEqual(images, [("Alt text with spaces and-hyphens", "https://example.com/image_with_underscores.gif?param=value")])
+
+    def test_extract_markdown_links_single(self):
+        text = "Visit [Google](https://www.google.com) for search."
+        links = extract_markdown_links(text)
+        self.assertEqual(links, [("Google", "https://www.google.com")])
+
+    def test_extract_markdown_links_multiple(self):
+        text = "My favorite sites are [GitHub](https://github.com) and [Stack Overflow](https://stackoverflow.com)."
+        links = extract_markdown_links(text)
+        self.assertEqual(links, [("GitHub", "https://github.com"), ("Stack Overflow", "https://stackoverflow.com")])
+
+    def test_extract_markdown_links_no_links(self):
+        text = "This text has no links at all."
+        links = extract_markdown_links(text)
+        self.assertEqual(links, [])
+
+    def test_extract_markdown_links_mixed_content_with_images(self):
+        text = "An image ![alt](img.jpg) and a link [blog](https://blog.example.com)."
+        links = extract_markdown_links(text)
+        self.assertEqual(links, [("blog", "https://blog.example.com")])
+
+    def test_extract_markdown_links_special_chars(self):
+        text = "[Link with spaces & hyphens](https://example.org/path/to/page?query=test&param=value)"
+        links = extract_markdown_links(text)
+        self.assertEqual(links, [("Link with spaces & hyphens", "https://example.org/path/to/page?query=test&param=value")])
+
+    def test_extract_markdown_links_image_like_but_not_image(self):
+        text = "This is not an image but a link: [!important link](http://example.com/not-an-image)"
+        links = extract_markdown_links(text)
+        self.assertEqual(links, [("!important link", "http://example.com/not-an-image")])
 
 if __name__ == "__main__":
     unittest.main()
