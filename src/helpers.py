@@ -1,5 +1,17 @@
 import re
+from enum import Enum
 from texnode import TextNode, TextType
+from htmlnode import HtmlNode
+from parentnode import ParentNode
+from leafnode import LeafNode
+
+class BlockType(Enum):
+    PARAGRAPH = "paragraph"
+    HEADING = "heading"
+    CODE = "code"
+    QUOTE = "quote"
+    UNORDERED_LIST = "unordered_list"
+    ORDERED_LIST = "ordered_list"
 
 def split_nodes_delimiter(old_nodes: list[TextNode], delimiter: str, text_type: TextType) -> list[TextNode]:
     new_nodes = []
@@ -137,3 +149,138 @@ def markdown_to_blocks(markdown : str) -> list[str]:
             final_blocks.append(stripped_block)
             
     return final_blocks
+
+def block_to_blocktype(block: str) -> BlockType:
+    lines = block.split('\n')
+
+    if block.startswith("#") and block.lstrip("#").startswith(" ") and 1 <= len(block.split(" ")[0]) <= 6:
+        return BlockType.HEADING
+    
+    if block.startswith("```") and block.endswith("```"):
+        return BlockType.CODE
+    
+    is_quote = True
+    for line in lines:
+        if not line.startswith(">"):
+            is_quote = False
+            break
+    if is_quote:
+        return BlockType.QUOTE
+    
+    is_unordered_list = True
+    for line in lines:
+        if not line.startswith("- "):
+            is_unordered_list = False
+            break
+    if is_unordered_list:
+        return BlockType.UNORDERED_LIST
+    
+    is_ordered_list = True
+    for i, line in enumerate(lines, 1):
+        expected_prefix = f"{i}. "
+        if not line.startswith(expected_prefix):
+            is_ordered_list = False
+            break
+    if is_ordered_list:
+        return BlockType.ORDERED_LIST
+    
+    # default to paragraph
+    return BlockType.PARAGRAPH
+
+def text_to_html_nodes(text: str) -> list[HtmlNode]:
+    text_nodes = text_to_textnodes(text)
+    html_nodes = []
+    for text_node in text_nodes:
+        html_nodes.append(text_node.text_node_to_html_node())
+    return html_nodes
+
+def heading_block_to_html_node(block: str) -> HtmlNode:
+    heading_level = len(block.split(" ")[0])
+    if not (1 <= heading_level <= 6):
+        raise ValueError(f"Invalid heading level. Must start with 1 to 6 hash characters: {block}")
+    
+    heading_text = block.lstrip("#").strip()
+    children = text_to_html_nodes(heading_text)
+    return ParentNode(f"h{heading_level}", children)
+
+def code_block_to_html_node(block: str) -> HtmlNode:
+    if not (block.startswith("```") and block.endswith("```")):
+        raise ValueError(f"Invalid code block. Must start with '```' and end with '```': {block.strip()}")
+    
+    code_content = block[3:-3].strip()
+    code_leaf = LeafNode("code", code_content)
+    
+    return ParentNode("pre", [code_leaf])
+
+def quote_block_to_html_node(block: str) -> HtmlNode:
+    lines = block.split("\n")
+    clean_lines = []
+    
+    for line in lines:
+        if not line.startswith(">"):
+            raise ValueError(f"Invalid quote block. All lines must begin with a '>' character: {line.strip()}")
+        
+        clean_lines.append(line[1:].strip())
+    
+    inner_text = "\n".join(clean_lines)
+    children = text_to_html_nodes(inner_text)
+    
+    return ParentNode("blockquote", children)
+
+def ul_block_to_html_node(block: str) -> HtmlNode:
+    lines = block.split("\n")
+    list_items = []
+
+    for line in lines:
+        if not line.startswith("- "):
+            raise ValueError(f"Invalid unordered list block. All lines must begin with a '- ' character: {line.strip()}")
+        
+        inner_text = line[2:].strip()
+        li_children = text_to_html_nodes(inner_text)
+        list_items.append(ParentNode("li", li_children))
+    
+    return ParentNode("ul", list_items)
+
+def ol_block_to_html_node(block: str) -> HtmlNode:
+    lines = block.split("\n")
+    list_items = []
+
+    for i, line in enumerate(lines, 1):
+        expected_prefix = f"{i}. "
+        if not line.startswith(expected_prefix):
+            raise ValueError(f"Invalid ordered list block. All lines must begin with a number followed by a '.': {line.strip()}")
+        
+        inner_text = line[len(expected_prefix):].strip()
+        li_children = text_to_html_nodes(inner_text)
+        list_items.append(ParentNode("li", li_children))
+    
+    return ParentNode("ol", list_items)
+
+def paragraph_block_to_html_node(block: str) -> HtmlNode:
+    inner_text = block.replace("\n", " ").strip()
+    children = text_to_html_nodes(inner_text)
+    return ParentNode("p", children)
+
+def markdown_to_html_node(markdown: str) -> HtmlNode:
+    blocks = markdown_to_blocks(markdown)
+    children_nodes = []
+
+    for block in blocks:
+        block_type = block_to_blocktype(block)
+        
+        if block_type == BlockType.HEADING:
+            children_nodes.append(heading_block_to_html_node(block))
+        elif block_type == BlockType.CODE:
+            children_nodes.append(code_block_to_html_node(block))
+        elif block_type == BlockType.QUOTE:
+            children_nodes.append(quote_block_to_html_node(block))
+        elif block_type == BlockType.UNORDERED_LIST:
+            children_nodes.append(ul_block_to_html_node(block))
+        elif block_type == BlockType.ORDERED_LIST:
+            children_nodes.append(ol_block_to_html_node(block))
+        elif block_type == BlockType.PARAGRAPH:
+            children_nodes.append(paragraph_block_to_html_node(block))
+        else:
+            raise ValueError(f"Invalid block type: {block_type}")
+    
+    return ParentNode("div", children_nodes)

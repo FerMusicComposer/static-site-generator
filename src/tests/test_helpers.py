@@ -594,6 +594,318 @@ Fourth paragraph, no trailing newlines."""
             "Fourth paragraph, no trailing newlines."
         ]
         self.assertEqual(blocks, expected_blocks)
+
+    def test_block_to_blocktype_paragraph(self):
+        block = "This is a normal paragraph of text."
+        self.assertEqual(block_to_blocktype(block), BlockType.PARAGRAPH)
+
+    def test_block_to_blocktype_heading_h1(self):
+        block = "# This is a heading"
+        self.assertEqual(block_to_blocktype(block), BlockType.HEADING)
+
+    def test_block_to_blocktype_heading_h6(self):
+        block = "###### This is a smaller heading"
+        self.assertEqual(block_to_blocktype(block), BlockType.HEADING)
+
+    def test_block_to_blocktype_heading_invalid(self):
+        self.assertEqual(block_to_blocktype("####### Not a heading"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_blocktype("#NoSpace"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_blocktype("##No leading space"), BlockType.PARAGRAPH)
+
+
+    def test_block_to_blocktype_code(self):
+        block = "```\nprint('Hello, world!')\n```"
+        self.assertEqual(block_to_blocktype(block), BlockType.CODE)
+    
+    def test_block_to_blocktype_code_single_line(self):
+        block = "```console.log('hi')```"
+        self.assertEqual(block_to_blocktype(block), BlockType.CODE)
+
+    def test_block_to_blocktype_code_missing_ticks(self):
+        self.assertEqual(block_to_blocktype("```code without end"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_blocktype("code without start```"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_blocktype("`single backtick`"), BlockType.PARAGRAPH) # Not a code block in this context
+
+    def test_block_to_blocktype_quote(self):
+        block = "> This is a quote\n> Another line of quote"
+        self.assertEqual(block_to_blocktype(block), BlockType.QUOTE)
+
+    def test_block_to_blocktype_quote_single_line(self):
+        block = "> Just one line."
+        self.assertEqual(block_to_blocktype(block), BlockType.QUOTE)
+
+    def test_block_to_blocktype_quote_invalid(self):
+        block = "> Line 1\nLine 2 (not a quote)"
+        self.assertEqual(block_to_blocktype(block), BlockType.PARAGRAPH)
+
+    def test_block_to_blocktype_unordered_list_hyphen(self):
+        block = "- Item 1\n- Item 2\n- Item 3"
+        self.assertEqual(block_to_blocktype(block), BlockType.UNORDERED_LIST)
+
+    def test_block_to_blocktype_unordered_list_star(self):
+        block = "* Item A\n* Item B"
+        self.assertEqual(block_to_blocktype(block), BlockType.PARAGRAPH) 
+
+    def test_block_to_blocktype_unordered_list_invalid(self):
+        block = "- Item 1\nNot a list item"
+        self.assertEqual(block_to_blocktype(block), BlockType.PARAGRAPH)
+        block_no_space = "-Item No Space"
+        self.assertEqual(block_to_blocktype(block_no_space), BlockType.PARAGRAPH)
+
+    def test_block_to_blocktype_ordered_list(self):
+        block = "1. First item\n2. Second item\n3. Third item"
+        self.assertEqual(block_to_blocktype(block), BlockType.ORDERED_LIST)
+
+    def test_block_to_blocktype_ordered_list_invalid_number(self):
+        block = "1. Item 1\n3. Item 2" # Skips 2
+        self.assertEqual(block_to_blocktype(block), BlockType.PARAGRAPH)
+
+    def test_block_to_blocktype_ordered_list_invalid_format(self):
+        self.assertEqual(block_to_blocktype("1.Item"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_blocktype("1- Item"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_blocktype("0. Item"), BlockType.PARAGRAPH) # Should start at 1
+
+    def test_block_to_blocktype_paragraph_with_hash_in_middle(self):
+        block = "This is a paragraph with #hash in the middle."
+        self.assertEqual(block_to_blocktype(block), BlockType.PARAGRAPH)
+
+    def test_block_to_blocktype_paragraph_looks_like_list_item(self):
+        block = "This is a sentence - that continues on."
+        self.assertEqual(block_to_blocktype(block), BlockType.PARAGRAPH)
+
+    def test_block_to_blocktype_complex_paragraph(self):
+        block = "This is a paragraph.\nIt has multiple lines.\nAnd some content."
+        self.assertEqual(block_to_blocktype(block), BlockType.PARAGRAPH)
+
+    def test_text_to_html_nodes_basic_conversion(self):
+        text = "This is **bold** and _italic_ with `code`."
+        nodes = text_to_html_nodes(text)
+        expected_nodes = [
+            LeafNode(None, "This is "),
+            LeafNode("b", "bold"),
+            LeafNode(None, " and "),
+            LeafNode("i", "italic"),
+            LeafNode(None, " with "),
+            LeafNode("code", "code"),
+            LeafNode(None, "."),
+        ]
+        self.assertEqual(nodes, expected_nodes)
+
+    def test_text_to_html_nodes_with_images_links(self):
+        text = "Check this ![image](img.jpg) and [this link](link.com)."
+        nodes = text_to_html_nodes(text)
+        expected_nodes = [
+            LeafNode(None, "Check this "),
+            LeafNode("img", "", {"src": "img.jpg", "alt": "image"}),
+            LeafNode(None, " and "),
+            LeafNode("a", "this link", {"href": "link.com"}),
+            LeafNode(None, "."),
+        ]
+        self.assertEqual(nodes, expected_nodes)
+
+    def test_text_to_html_nodes_only_normal_text(self):
+        text = "Just plain text."
+        nodes = text_to_html_nodes(text)
+        expected_nodes = [
+            LeafNode(None, "Just plain text."),
+        ]
+        self.assertEqual(nodes, expected_nodes)
+    
+    def test_text_to_html_nodes_empty_string(self):
+        text = ""
+        nodes = text_to_html_nodes(text)
+        expected_nodes = []
+        self.assertEqual(nodes, expected_nodes)
+
+    def test_heading_block_to_html_node_h1(self):
+        block = "# My Heading"
+        node = heading_block_to_html_node(block)
+        expected_node = ParentNode("h1", [LeafNode(None, "My Heading")])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_heading_block_to_html_node_h3_with_inline(self):
+        block = "### Heading with **bold** and `code`"
+        node = heading_block_to_html_node(block)
+        expected_node = ParentNode("h3", [
+            LeafNode(None, "Heading with "),
+            LeafNode("b", "bold"),
+            LeafNode(None, " and "),
+            LeafNode("code", "code"),
+        ])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_heading_block_to_html_node_invalid_level_too_high(self):
+        block = "####### Too many hashes"
+        with self.assertRaisesRegex(ValueError, r"Invalid heading level\. Must start with 1 to 6 hash characters: ####### Too many hashes"):
+            heading_block_to_html_node(block)
+
+    def test_code_block_to_html_node_multi_line(self):
+        block = "```\nprint('Hello')\n```"
+        node = code_block_to_html_node(block)
+        expected_node = ParentNode("pre", [LeafNode("code", "print('Hello')")])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_code_block_to_html_node_single_line(self):
+        block = "```console.log('test');```"
+        node = code_block_to_html_node(block)
+        expected_node = ParentNode("pre", [LeafNode("code", "console.log('test');")])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_code_block_to_html_node_invalid_no_closing(self):
+        block = "```print('no close')"
+        with self.assertRaisesRegex(ValueError, r"Invalid code block\. Must start with '```' and end with '```': ```print\('no close'\)"):
+            code_block_to_html_node(block)
+
+    def test_quote_block_to_html_node_multi_line(self):
+        block = "> This is a quote.\n> Second line of quote."
+        node = quote_block_to_html_node(block)
+        expected_node = ParentNode("blockquote", [LeafNode(None, "This is a quote.\nSecond line of quote.")])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_quote_block_to_html_node_with_inline(self):
+        block = "> This is _italic_ and **bold**."
+        node = quote_block_to_html_node(block)
+        expected_node = ParentNode("blockquote", [
+            LeafNode(None, "This is "),
+            LeafNode("i", "italic"),
+            LeafNode(None, " and "),
+            LeafNode("b", "bold"),
+            LeafNode(None, "."),
+        ])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_quote_block_to_html_node_invalid_line(self):
+        block = "> Line 1\nLine 2 not quoted"
+        with self.assertRaisesRegex(ValueError, "Invalid quote block. All lines must begin with a '>' character: Line 2 not quoted"):
+            quote_block_to_html_node(block)
+
+    def test_ul_block_to_html_node_basic(self):
+        block = "- Item 1\n- Item 2"
+        node = ul_block_to_html_node(block)
+        expected_node = ParentNode("ul", [
+            ParentNode("li", [LeafNode(None, "Item 1")]),
+            ParentNode("li", [LeafNode(None, "Item 2")]),
+        ])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_ul_block_to_html_node_with_inline(self):
+        block = "- Item **one**\n- Item _two_ with [link](url.com)"
+        node = ul_block_to_html_node(block)
+        expected_node = ParentNode("ul", [
+            ParentNode("li", [
+                LeafNode(None, "Item "),
+                LeafNode("b", "one"),
+            ]),
+            ParentNode("li", [
+                LeafNode(None, "Item "),
+                LeafNode("i", "two"),
+                LeafNode(None, " with "),
+                LeafNode("a", "link", {"href": "url.com"}),
+            ]),
+        ])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_ol_block_to_html_node_basic(self):
+        block = "1. First\n2. Second"
+        node = ol_block_to_html_node(block)
+        expected_node = ParentNode("ol", [
+            ParentNode("li", [LeafNode(None, "First")]),
+            ParentNode("li", [LeafNode(None, "Second")]),
+        ])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_ol_block_to_html_node_with_inline(self):
+        block = "1. Item **one**\n2. Item _two_ with `code`"
+        node = ol_block_to_html_node(block)
+        expected_node = ParentNode("ol", [
+            ParentNode("li", [
+                LeafNode(None, "Item "),
+                LeafNode("b", "one"),
+            ]),
+            ParentNode("li", [
+                LeafNode(None, "Item "),
+                LeafNode("i", "two"),
+                LeafNode(None, " with "),
+                LeafNode("code", "code"),
+            ]),
+        ])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+
+    def test_paragraph_block_to_html_node_single_line(self):
+        block = "This is a simple paragraph."
+        node = paragraph_block_to_html_node(block)
+        expected_node = ParentNode("p", [LeafNode(None, "This is a simple paragraph.")])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_paragraph_block_to_html_node_multi_line_no_markdown(self):
+        block = "This is a paragraph.\nIt spans multiple lines."
+        node = paragraph_block_to_html_node(block)
+        expected_node = ParentNode("p", [LeafNode(None, "This is a paragraph. It spans multiple lines.")])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_paragraph_block_to_html_node_with_inline_markdown(self):
+        block = "A paragraph with **bold** and _italic_ text."
+        node = paragraph_block_to_html_node(block)
+        expected_node = ParentNode("p", [
+            LeafNode(None, "A paragraph with "),
+            LeafNode("b", "bold"),
+            LeafNode(None, " and "),
+            LeafNode("i", "italic"),
+            LeafNode(None, " text."),
+        ])
+        self.assertEqual(node.to_html(), expected_node.to_html())
+
+    def test_markdown_to_html_node_full_document_example(self):
+        md = """    
+# Heading One
+
+This is a paragraph of text. It has some **bold** and _italic_ words inside of it.
+```
+name = "Peter"
+print("Hello, world!")
+def greet(name):
+    return f"Hello, {name}!"
+```
+
+> This is a quote block.
+> It can span multiple lines.
+
+- First unordered item
+- Second unordered item
+
+1. First ordered item
+2. Second ordered item
+3. Third ordered item
+"""
+        html_node = markdown_to_html_node(md)
+        print(html_node.to_html())
         
+        expected_html = ParentNode("div", [
+            ParentNode("h1", [LeafNode(None, "Heading One")]),
+            ParentNode("p", [
+                LeafNode(None, "This is a paragraph of text. It has some "),
+                LeafNode("b", "bold"),
+                LeafNode(None, " and "),
+                LeafNode("i", "italic"),
+                LeafNode(None, " words inside of it."),
+            ]),
+            ParentNode("pre", [LeafNode("code", "print(\"Hello, world!\")\ndef greet(name):\n    return f\"Hello, {name}!\"")]),
+            ParentNode("blockquote", [
+                LeafNode(None, "This is a quote block.\nIt can span multiple lines.")
+            ]),
+            ParentNode("ul", [
+                ParentNode("li", [LeafNode(None, "First unordered item")]),
+                ParentNode("li", [LeafNode(None, "Second unordered item")]),
+            ]),
+            ParentNode("ol", [
+                ParentNode("li", [LeafNode(None, "First ordered item")]),
+                ParentNode("li", [LeafNode(None, "Second ordered item")]),
+                ParentNode("li", [LeafNode(None, "Third ordered item")]),
+            ]),
+        ])
+        print(expected_html.to_html())
+        self.assertEqual(html_node.to_html(), expected_html.to_html())
+
 if __name__ == "__main__":
     unittest.main()
