@@ -552,5 +552,48 @@ This is the same paragraph on a new line
                 "- This is a list\n- with items",
             ],
         )
+    
+    def test_markdown_to_blocks_start_end_no_extra_newlines(self):
+        """
+        Tests markdown_to_blocks with markdown that starts and ends precisely with blocks
+        and has no excessive newlines.
+        """
+        md = """# Heading One
+This is some text.
+
+Another paragraph.
+- List item 1
+- List item 2
+"""
+        blocks = markdown_to_blocks(md)
+        expected_blocks = [
+            "# Heading One\nThis is some text.",
+            "Another paragraph.\n- List item 1\n- List item 2",
+        ]
+        self.assertEqual(blocks, expected_blocks)
+
+    def test_markdown_to_blocks_multiple_paragraphs_varying_newlines(self):
+        """
+        Tests markdown_to_blocks with multiple paragraphs and varying amounts of newlines
+        between them to ensure correct trimming and block identification.
+        """
+        md = """First paragraph.
+
+Second paragraph.
+
+
+Third paragraph.
+
+
+Fourth paragraph, no trailing newlines."""
+        blocks = markdown_to_blocks(md)
+        expected_blocks = [
+            "First paragraph.",
+            "Second paragraph.",
+            "Third paragraph.",
+            "Fourth paragraph, no trailing newlines."
+        ]
+        self.assertEqual(blocks, expected_blocks)
+        
 if __name__ == "__main__":
     unittest.main()
