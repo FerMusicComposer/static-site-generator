@@ -1,4 +1,5 @@
 import unittest
+import textwrap
 from texnode import TextNode, TextType
 from helpers import *
 
@@ -857,30 +858,28 @@ Fourth paragraph, no trailing newlines."""
         self.assertEqual(node.to_html(), expected_node.to_html())
 
     def test_markdown_to_html_node_full_document_example(self):
-        md = """    
-# Heading One
+        md = textwrap.dedent("""
+            # Heading One
 
-This is a paragraph of text. It has some **bold** and _italic_ words inside of it.
-```
-name = "Peter"
-print("Hello, world!")
-def greet(name):
-    return f"Hello, {name}!"
-```
+            This is a paragraph of text. It has some **bold** and _italic_ words inside of it.
 
-> This is a quote block.
-> It can span multiple lines.
+            ```
+            print("Hello, world!")
+            def greet(name):
+                return f"Hello, {name}!"
+            ```
 
-- First unordered item
-- Second unordered item
+            > This is a quote block.
+            > It can span multiple lines.
 
-1. First ordered item
-2. Second ordered item
-3. Third ordered item
-"""
-        html_node = markdown_to_html_node(md)
-        print(html_node.to_html())
-        
+            - First unordered item
+            - Second unordered item
+
+            1. First ordered item
+            2. Second ordered item
+            3. Third ordered item
+        """)
+        html_node = markdown_to_html_node(md)        
         expected_html = ParentNode("div", [
             ParentNode("h1", [LeafNode(None, "Heading One")]),
             ParentNode("p", [
@@ -904,7 +903,6 @@ def greet(name):
                 ParentNode("li", [LeafNode(None, "Third ordered item")]),
             ]),
         ])
-        print(expected_html.to_html())
         self.assertEqual(html_node.to_html(), expected_html.to_html())
 
 if __name__ == "__main__":
