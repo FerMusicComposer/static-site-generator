@@ -39,7 +39,7 @@ def extract_title(markdown: str) -> str:
     
     return header
 
-def generate_page(from_path: str, template_path: str, output_path: str):
+def generate_page(basepath: str, from_path: str, template_path: str, output_path: str):
     markdown = ""
     template = ""
 
@@ -49,7 +49,6 @@ def generate_page(from_path: str, template_path: str, output_path: str):
         markdown = f.read().strip()
 
     cleaned_markdown = textwrap.dedent(markdown).strip()
-    print(f"Markdown: {cleaned_markdown}")
 
     with open(template_path, "r") as f:
         template = f.read()
@@ -57,6 +56,7 @@ def generate_page(from_path: str, template_path: str, output_path: str):
     html = markdown_to_html_node(cleaned_markdown).to_html()
     title = extract_title(cleaned_markdown)
     page = template.replace("{{ Title }}", title).replace("{{ Content }}", html)
+    page = page.replace("href=\"/", f"href=\"{basepath}").replace("src=\"/", f"src=\"{basepath}")
 
     output_dir = os.path.dirname(output_path)
     if output_dir:
@@ -67,7 +67,7 @@ def generate_page(from_path: str, template_path: str, output_path: str):
 
     print(f"Page generated at {output_path}")
 
-def generate_pages_recursive(dir_path_content: str, template_path: str, dest_dir_path: str):
+def generate_pages_recursive(basepath: str, dir_path_content: str, template_path: str, dest_dir_path: str):
     print(f"Generating pages from directory: {dir_path_content}")
 
     os.makedirs(dest_dir_path, exist_ok=True)
@@ -81,14 +81,14 @@ def generate_pages_recursive(dir_path_content: str, template_path: str, dest_dir
                 output_file_path = os.path.join(dest_dir_path, file_name_html)
                 
                 print(f"Generating page for markdown file: {full_content_path}")
-                generate_page(full_content_path, template_path, output_file_path)
+                generate_page(basepath, full_content_path, template_path, output_file_path)
             else:
                 print(f"Skipping non-markdown file: {full_content_path}")
         
         elif os.path.isdir(full_content_path):
             new_dest_dir_path = os.path.join(dest_dir_path, item)
             print(f"Entering content subdirectory: {full_content_path}")
-            generate_pages_recursive(full_content_path, template_path, new_dest_dir_path)
+            generate_pages_recursive(basepath,full_content_path, template_path, new_dest_dir_path)
         else:
             print(f"Skipping unknown item type in content directory: {full_content_path}")
 
