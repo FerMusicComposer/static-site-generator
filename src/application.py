@@ -66,3 +66,30 @@ def generate_page(from_path: str, template_path: str, output_path: str):
         f.write(page)
 
     print(f"Page generated at {output_path}")
+
+def generate_pages_recursive(dir_path_content: str, template_path: str, dest_dir_path: str):
+    print(f"Generating pages from directory: {dir_path_content}")
+
+    os.makedirs(dest_dir_path, exist_ok=True)
+
+    for item in os.listdir(dir_path_content):
+        full_content_path = os.path.join(dir_path_content, item)
+        
+        if os.path.isfile(full_content_path):
+            if item.endswith(".md"):
+                file_name_html = item.replace(".md", ".html")
+                output_file_path = os.path.join(dest_dir_path, file_name_html)
+                
+                print(f"Generating page for markdown file: {full_content_path}")
+                generate_page(full_content_path, template_path, output_file_path)
+            else:
+                print(f"Skipping non-markdown file: {full_content_path}")
+        
+        elif os.path.isdir(full_content_path):
+            new_dest_dir_path = os.path.join(dest_dir_path, item)
+            print(f"Entering content subdirectory: {full_content_path}")
+            generate_pages_recursive(full_content_path, template_path, new_dest_dir_path)
+        else:
+            print(f"Skipping unknown item type in content directory: {full_content_path}")
+
+    print(f"Finished crawling directory: {dir_path_content}")
