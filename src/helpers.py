@@ -139,16 +139,23 @@ def text_to_textnodes(text: str) -> list[TextNode]:
     return nodes
 
 def markdown_to_blocks(markdown : str) -> list[str]:
-    cleaned_markdown = markdown.strip()
-    blocks = cleaned_markdown.split("\n\n")
-    final_blocks = []
+    normalized_markdown = markdown.replace("\r\n", "\n").replace("\r", "\n").replace("\xa0", " ")
+    lines = normalized_markdown.split('\n')
+    blocks = []
+    current_block_lines = []
 
-    for block in blocks:
-        stripped_block = block.strip()
-        if stripped_block:
-            final_blocks.append(stripped_block)
-            
-    return final_blocks
+    for line in lines:
+        if line.strip() == "":
+            if current_block_lines:
+                blocks.append("\n".join(current_block_lines).strip())
+                current_block_lines = []
+        else:
+            current_block_lines.append(line)
+    
+    if current_block_lines:
+        blocks.append("\n".join(current_block_lines).strip())
+    
+    return [block for block in blocks if block]
 
 def block_to_blocktype(block: str) -> BlockType:
     lines = block.split('\n')
