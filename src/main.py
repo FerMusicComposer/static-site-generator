@@ -1,8 +1,15 @@
-from texnode import TextType, TextNode
+import os
+from application import *
 
 def main():
-    node = TextNode("this is a link", TextType.LINK, "https://google.com")
-    print(node)
+    static_dir = "static"
+    public_dir = "public"
+
+    if not os.path.exists(static_dir):
+        print(f"Error, source directory does not exist: {static_dir}")
+        return
+
+    copy_directory_recursive(static_dir, public_dir)
 
 if __name__ == "__main__":
     main()
