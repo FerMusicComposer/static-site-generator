@@ -1,7 +1,7 @@
 **🚀 My Static Site Generator**
 ===============================
 
-This project is a custom-built static site generator, created as part of the [Boot.dev](https://www.boot.dev) course. It takes Markdown content files and a HTML template, then processes them to produce a fully functional static website, ready for deployment!
+This project is a custom-built static site generator, created as part of the [Boot.dev](https://www.boot.dev) project challenge. It takes Markdown content files and a HTML template, then processes them to produce a fully functional static website, ready for deployment!
 
 **✨ Features**
 --------------
